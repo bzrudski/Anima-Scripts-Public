@@ -76,6 +76,9 @@ if args.start == 1 or args.start == 0:
 
 previousMergeId = 0
 
+print("*"*10+"\n\n")
+print("Finished regstrations... beginning BCH")
+
 for k in range(args.start + 1, args.num_images + 1):
     print(f"Starting with image {k}...")
     if os.path.exists('it_' + str(k) + '_done'):
@@ -129,7 +132,7 @@ for k in range(args.start + 1, args.num_images + 1):
     # Use the BCH approximation to update the deformation fields
     numJobs = k
 
-    for i in range(numJobs):
+    for i in range(1, numJobs + 1):
         bch_command = [
             os.path.join(animaScriptsDir,
                          "atlasing/anatomical_iterative_centroid/animaICAnatomicalComposeTransformations.py"),
