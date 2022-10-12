@@ -124,16 +124,16 @@ for i in range(0,len(brainImages)):
 myfileImages.close()
 
 # Now register prior atlas onto first reference image
-command = [animaPyramidalBMRegistration, "-m", atlasImage, "-r", brainImages[0], "-o", brainImagePrefix + "_rig.nrrd",
+command = [animaPyramidalBMRegistration, "-m", atlasImage, "-r", brainImagePrefix + '_biasCorrected_0.nrrd', "-o", brainImagePrefix + "_rig.nrrd",
            "-O", brainImagePrefix + "_rig_tr.txt", "--sp", "3"] + pyramidOptions
 call(command)
 
-command = [animaPyramidalBMRegistration, "-m", atlasImage, "-r", brainImages[0], "-o", brainImagePrefix + "_aff.nrrd",
+command = [animaPyramidalBMRegistration, "-m", atlasImage, "-r", brainImagePrefix + '_biasCorrected_0.nrrd', "-o", brainImagePrefix + "_aff.nrrd",
            "-O", brainImagePrefix + "_aff_tr.txt", "-i", brainImagePrefix + "_rig_tr.txt", "--sp", "3", "--ot",
            "2"] + pyramidOptions
 call(command)
 
-command = [animaDenseSVFBMRegistration, "-r", brainImages[0], "-m", brainImagePrefix + "_aff.nrrd",
+command = [animaDenseSVFBMRegistration, "-r", brainImagePrefix + '_biasCorrected_0.nrrd', "-m", brainImagePrefix + "_aff.nrrd",
            "-o", brainImagePrefix + "_nl.nrrd", "-O", brainImagePrefix + "_nl_tr.nrrd", "--tub", "2"] + pyramidOptions
 call(command)
 
