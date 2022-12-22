@@ -88,7 +88,7 @@ for k in range(args.start + 1, args.num_images + 1):
 
     print("*************Incorporating image: " + str(k) + " in atlas: " + ref)
 
-    for f in glob.glob("residualDir/" + prefix + '_*_nl_tr.nii.gz') + glob.glob("residualDir/" + prefix + '_*_flag'):
+    for f in glob.glob("residualDir/" + prefix + '_*_nl_tr.nrrd') + glob.glob("residualDir/" + prefix + '_*_flag'):
         os.remove(f)
 
     nCoresPhysical = int(args.num_cores / 2)
@@ -102,6 +102,7 @@ for k in range(args.start + 1, args.num_images + 1):
 
     # Register the new image against the reference
     registration_command = [
+        "python",
         os.path.join(animaScriptsDir,
                      "atlasing/anatomical_iterative_centroid/animaICAnatomicalRegisterImage.py"),
         "-d", os.getcwd(),
@@ -134,6 +135,7 @@ for k in range(args.start + 1, args.num_images + 1):
 
     for i in range(1, numJobs + 1):
         bch_command = [
+            "python",
             os.path.join(animaScriptsDir,
                          "atlasing/anatomical_iterative_centroid/animaICAnatomicalComposeTransformations.py"),
             "-d", os.getcwd(),
@@ -156,6 +158,7 @@ for k in range(args.start + 1, args.num_images + 1):
 
     # Merge the new image into the atlas
     merge_command = [
+        "python",
         os.path.join(animaScriptsDir,
                      "atlasing/anatomical_iterative_centroid/animaICAnatomicalMergeImages.py"),
         "-d", os.getcwd(),

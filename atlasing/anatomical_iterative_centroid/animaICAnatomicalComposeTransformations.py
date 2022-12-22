@@ -53,21 +53,21 @@ animaCreateImage = os.path.join(animaDir, "animaCreateImage")
 animaLinearTransformArithmetic = os.path.join(animaDir, "animaLinearTransformArithmetic")
 
 if a == 1 and k == 2:
-    command = [animaCreateImage, "-g", "averageForm1.nii.gz", "-v", "3", "-b", "0", "-o", f"{temp_dir}/thetak_1.nii.gz"]
+    command = [animaCreateImage, "-g", "averageForm1.nii.gz", "-v", "3", "-b", "0", "-o", f"{temp_dir}/thetak_1.nrrd"]
     call(command)
     command = [animaLinearTransformArithmetic, "-i", os.path.join(temp_dir, args.prefix + "_2_linear_tr.txt"), "-M",
                "0", "-o", os.path.join(temp_dir, args.prefix + "_1_linear_tr.txt")]
     call(command)
 
 if a < k:
-    command = [animaDenseTransformArithmetic, "-i", os.path.join(temp_dir, "thetak_" + str(a) + ".nii.gz"), "-c",
-               os.path.join(temp_dir, "Tk.nii.gz"), "-b", str(args.bch_order), "-o",
-               os.path.join(temp_dir, "thetak_" + str(a) + ".nii.gz")]
+    command = [animaDenseTransformArithmetic, "-i", os.path.join(temp_dir, "thetak_" + str(a) + ".nrrd"), "-c",
+               os.path.join(temp_dir, "Tk.nrrd"), "-b", str(args.bch_order), "-o",
+               os.path.join(temp_dir, "thetak_" + str(a) + ".nrrd")]
     call(command)
 
 command = [animaTransformSerieXmlGenerator, "-i",
            os.path.join(temp_dir, args.prefix + "_" + str(a) + "_linear_tr.txt"), "-i",
-           os.path.join(temp_dir, "thetak_" + str(a) + ".nii.gz"), "-o",
+           os.path.join(temp_dir, "thetak_" + str(a) + ".nrrd"), "-o",
            os.path.join(temp_dir, "T_" + str(a) + ".xml")]
 call(command)
 

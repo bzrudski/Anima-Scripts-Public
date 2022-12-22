@@ -66,7 +66,7 @@ command = [
     animaPyramidalBMRegistration,
     "-r", args.ref_image,
     "-m", os.path.join(args.prefix_base, args.prefix + "_" + str(k) + ".nii.gz"),
-    "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff.nii.gz"),
+    "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff.nrrd"),
     "-O", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_tr.txt"),
     "--out-rigid", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_nr_tr.txt"),
     "--ot", "2",
@@ -84,9 +84,9 @@ run(command)
 command = [
     animaDenseSVFBMRegistration,
     "-r", args.ref_image,
-    "-m", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff.nii.gz"),
-    "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal.nii.gz"),
-    "-O", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nii.gz"),
+    "-m", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff.nrrd"),
+    "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal.nrrd"),
+    "-O", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"),
     "--tub", "2",
     "--es", "3",
     "--fs", "2",
@@ -98,57 +98,67 @@ run(command)
 
 if args.rigid:
 
-    command = [
-        animaLinearTransformArithmetic, "-i", os.path.join(
-            temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
-        ),
-        "-M", "-1",
-    ]
-    run(command)
+    # command = [
+    #     animaLinearTransformArithmetic, "-i", os.path.join(
+    #         # temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
+    #         temp_dir, args.prefix + "_" + str(k) + "_aff_nr_tr.txt"
+    #     ),
+    #     "-M", "-1",
+    #     "-o", os.path.join(
+    #         temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
+    #     )
+    # ]
+    # run(command)
+
+    shutil.move(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_nr_tr.txt"),
+                os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"))
 
     command = [
         animaLinearTransformToSVF,
-        "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nii.gz"),
+        "-i", os.path.join(
+            temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
+        ),
+        "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"),
         "-g", args.ref_image
     ]
     run(command)
 
     command = [
         animaDenseTransformArithmetic,
-        "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nii.gz"),
-        "-c", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nii.gz"),
+        "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"),
+        "-c", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"),
         "-b", str(args.bch_order),
-        "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nii.gz")
+        "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd")
     ]
     run(command)
 else:
     shutil.move(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_tr.txt"),
                 os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"))
 
-    shutil.move(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nii.gz"),
-                os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nii.gz"))
+    shutil.move(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"),
+                os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"))
 
-if os.path.exists(os.path.join(residual_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nii.gz")):
-    os.remove(os.path.join(residual_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nii.gz"))
+if os.path.exists(os.path.join(residual_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd")):
+    os.remove(os.path.join(residual_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"))
 
-os.symlink(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nii.gz"),
-           os.path.join(residual_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nii.gz"))
+os.symlink(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"),
+           os.path.join(residual_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"))
 
-if os.path.exists(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nii.gz")):
+if os.path.exists(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd")):
     open(os.path.join(residual_dir, args.prefix + "_" + str(k) + "_flag"), 'a').close()
 
-if os.path.exists(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nii.gz")):
-    os.remove(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nii.gz"))
+if os.path.exists(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd")):
+    os.remove(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"))
 
-if os.path.exists(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nii.gz")):
-    os.remove(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nii.gz"))
+if os.path.exists(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd")):
+    os.remove(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"))
 
 wk = -1.0 / k
-command = [animaImageArithmetic, "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nii.gz"),
-           "-M", str(wk), "-o", os.path.join(temp_dir, "Tk.nii.gz")]
+command = [animaImageArithmetic, "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"),
+           "-M", str(wk), "-o", os.path.join(temp_dir, "Tk.nrrd")]
 run(command)
 
 wkk = (k - 1.0) / k
-command = [animaImageArithmetic, "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nii.gz"),
-           "-M", str(wkk), "-o", os.path.join(temp_dir, "thetak_" + str(k) + ".nii.gz")]
+command = [animaImageArithmetic, "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"),
+           "-M", str(wkk), "-o", os.path.join(temp_dir, "thetak_" + str(k) + ".nrrd")]
 run(command)
