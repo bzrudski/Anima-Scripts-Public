@@ -5,7 +5,7 @@ import argparse
 import os
 import sys
 import glob
-from subprocess import call
+from subprocess import run
 import shutil
 
 if sys.version_info[0] > 2:
@@ -35,22 +35,22 @@ parser.add_argument('-c', '--num-cores', type=int, default=40, help='Number of c
 args = parser.parse_args()
 os.chdir(args.ref_dir)
 
-animaAverageImages = os.path.join(animaDir,"animaAverageImages")
+animaAverageImages = os.path.join(animaDir, "animaAverageImages")
 
-myfile = open("avgImg.txt","w")
-myfileMasks = open("masksIms.txt","w")
-for a in range(1,args.num_iter + 1):
-    myfile.write(os.path.join("tempDir",args.prefix + "_" + str(a) + "_at.nii.gz") + "\n")
+my_file = open("avgImg.txt", "w")
+my_file_masks = open("masksIms.txt", "w")
+for a in range(1, args.num_iter + 1):
+    my_file.write(os.path.join("tempDir", args.prefix + "_" + str(a) + "_at.nii.gz") + "\n")
 
     if os.path.exists(os.path.join("Masks", "Mask_" + str(a) + ".nii.gz")):
-        myfileMasks.write(os.path.join("tempDir","Mask_" + str(a) + "_at.nii.gz\n"))
+        my_file_masks.write(os.path.join("tempDir", "Mask_" + str(a) + "_at.nii.gz\n"))
 
-myfile.close()
-myfileMasks.close()
+my_file.close()
+my_file_masks.close()
 
-command = [animaAverageImages, "-i", "avgImg.txt","-o","averageForm" + str(args.num_iter) +".nii.gz"]
+command = [animaAverageImages, "-i", "avgImg.txt", "-o", "averageForm" + str(args.num_iter) + ".nii.gz"]
 
-if os.path.exists(os.path.join("Masks","Mask_1.nii.gz")):
-    command += ["-m","masksIms.txt"]
+if os.path.exists(os.path.join("Masks", "Mask_1.nii.gz")):
+    command += ["-m", "masksIms.txt"]
 
-call(command)
+run(command)
