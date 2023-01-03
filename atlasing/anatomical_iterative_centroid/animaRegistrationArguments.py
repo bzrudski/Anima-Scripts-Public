@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import IntEnum
+from typing import Tuple
 
+import tomli
 
 class AggregatorTypeNonRigid(IntEnum):
     BALOO = 0
@@ -189,3 +191,85 @@ class AnimaPyramidalBMRegistrationArguments:
             '--sp', f"{self.block_spacing}",
             '--bs', f"{self.block_size}",
         ]
+
+
+def parse_registration_parameters(filename: str) -> Tuple[
+    AnimaPyramidalBMRegistrationArguments, AnimaDenseSVFBMRegistrationArguments
+]:
+    """
+    Parse the registration parameters.
+
+    This function parses the registration parameters from a TOML file. The file should contain at most two sections:
+
+    * `[AnimaPyramidalBMRegistrationArguments]`
+    * `[AnimaDenseSVFBMRegistrationArguments]`
+
+    Within each section, the arguments may be provided as listed in the class attributes above. Any key that is not
+    provided will result in the default value being set for the corresponding registration parameter. The following are
+    acceptable keys:
+
+    * AnimaPyramidalBMRegistrationArguments
+
+        * last_pyramid_level
+        * number_of_pyramid_levels
+        * lts_stopping_threshold
+        * aggregator_threshold_value
+        * aggregator_type
+        * kissing_point_location
+        * symmetry_type
+        * bobyqa_scale_upper_bound
+        * bobyqa_angle_upper_bound
+        * bobyqa_translate_upper_bound
+        * exhaustive_search_step
+        * initialisation_type
+        * maximum_local_optimizer_iterations
+        * minimum_distance_between_transforms
+        * maximum_block_match_iterations
+        * optimizer
+        * similarity_metric
+        * direction_of_directional_affine
+        * transformation_type_between_blocks
+        * percentage_of_blocks_kept
+        * block_minimum_standard_deviation
+        * block_spacing
+        * block_size
+
+    * AnimaDenseSVFBMRegistrationArguments:
+
+        * last_pyramid_level
+        * number_of_pyramid_levels
+        * exponentiation_order
+        * bch_order
+        * m_estimation_threshold
+        * outlier_rejection_sigma
+        * elastic_regularisation_sigma
+        * extrapolation_sigma
+        * aggregator_type
+        * kissing_point_location
+        * symmetry_type
+        * bobyqa_scale_upper_bound
+        * bobyqa_angle_upper_bound
+        * bobyqa_translate_upper_bound
+        * exhaustive_search_step
+        * maximum_local_optimizer_iterations
+        * minimum_distance_between_transforms
+        * maximum_block_match_iterations
+        * optimizer
+        * similarity_metric
+        * direction_of_directional_affine
+        * transformation_type_between_blocks
+        * percentage_of_blocks_kept
+        * block_minimum_standard_deviation
+        * block_spacing
+        * block_size
+
+    :param filename: the TOML file containing the registration parameters
+    :return: a tuple containing the `AnimaPyramidalBMRegistrationArguments` and `AnimaDenseSVFBMRegistrationArguments`
+    """
+
+    with open(filename, "rb") as toml_file:
+        parsed_parameters = tomli.load(toml_file)
+
+        #TODO: Finish the implementation
+
+        toml_file.close()
