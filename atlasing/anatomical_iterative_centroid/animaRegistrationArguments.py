@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Tuple
+from typing import Tuple, Any, Type
 
 import tomli
+
 
 class AggregatorTypeNonRigid(IntEnum):
     BALOO = 0
@@ -193,6 +194,33 @@ class AnimaPyramidalBMRegistrationArguments:
         ]
 
 
+def _parse_enum(value: str | int, enum_type: Type[IntEnum]) -> IntEnum:
+    """
+    Parse an IntEnum from a given string or integer.
+
+    The `value` argument contains either the integer that corresponds to the desired enumerated value or it contains
+    a string with any of the integer value or the name of the desired enum value. This function is case-insensitive
+    and the value may contain spaces or dashes instead of underscores.
+
+    This function throws:
+
+    * `ValueError` if the value supplied is an integer that does not match any of the enumerated values.
+    * `KeyError` if the value supplied is a string that does not match any of the enumerated keys.
+
+    :param value: The value to parse from the enumerated type (int or str).
+    :param enum_type: The enumerated type from which a value is desired.
+    :return: The specific instance of the enumerated type that corresponds to the value supplied.
+    """
+    if isinstance(value, int):
+        return enum_type(value)
+    elif isinstance(value, str):
+        if value.isdigit():
+            return enum_type(int(value))
+        else:
+            cleaned_value = value.upper().replace(" ", "_").replace("-", "_")
+            return enum_type[cleaned_value]
+
+
 def parse_registration_parameters(filename: str) -> Tuple[
     AnimaPyramidalBMRegistrationArguments, AnimaDenseSVFBMRegistrationArguments
 ]:
@@ -205,8 +233,18 @@ def parse_registration_parameters(filename: str) -> Tuple[
     * `[AnimaDenseSVFBMRegistrationArguments]`
 
     Within each section, the arguments may be provided as listed in the class attributes above. Any key that is not
-    provided will result in the default value being set for the corresponding registration parameter. The following are
-    acceptable keys:
+    provided will result in the default value being set for the corresponding registration parameter. For the values
+    which are specified by enumerated types, acceptable values are either the integer value or the name of the option
+    as a string. This string is case-insensitive and any underscores may be replaced by spaces or dashes. None of the
+    letters may be changed, though. For example, in the case of the `aggregator_type` in `[
+    AnimaPyramidalBMRegistrationArguments]`, the following are all acceptable and equivalent:
+
+    * `2` (this works both when passed as an integer or a string)
+    * `"least trimmed squares"`
+    * `"LEAST-TRIMMED-SQUARES"`
+    * `"leAsT TriMmeD_Squares"`
+
+    The following are acceptable keys:
 
     * AnimaPyramidalBMRegistrationArguments
 
@@ -268,8 +306,62 @@ def parse_registration_parameters(filename: str) -> Tuple[
     """
 
     with open(filename, "rb") as toml_file:
-        parsed_parameters = tomli.load(toml_file)
+        parsed_parameters: dict[str, dict[str, Any]] = tomli.load(toml_file)
 
-        #TODO: Finish the implementation
+        # Define our variables for later
+        anima_pyramidal_bm_registration_arguments: AnimaPyramidalBMRegistrationArguments
+        anima_dense_svf_bm_registration_arguments: AnimaDenseSVFBMRegistrationArguments
+
+        # Determine whether we have a section for the rigid arguments.
+        if "AnimaPyramidalBMRegistrationArguments" in parsed_parameters:
+            rigid_parameters = parsed_parameters["AnimaPyramidalBMRegistrationArguments"]
+
+            # Deal with the enums.
+            rigid_enum_keys = {
+                "aggregator_type": AggregatorTypeRigid,
+                "symmetry_type": SymmetryType,
+                "initialisation_type": InitialisationType,
+                "optimizer": OptimizerType,
+                "similarity_metric": SimilarityMetric,
+                "direction_of_directional_affine": CartesianAxis,
+                "transformation_type_between_blocks": TransformationType,
+            }
+
+            for rigid_enum_key in rigid_enum_keys:
+                if rigid_enum_key in rigid_parameters:
+                    raw_value = rigid_parameters[rigid_enum_key]
+                    enum_type = rigid_enum_keys[rigid_enum_key]
+
+                    rigid_parameters[rigid_enum_key] = _parse_enum(raw_value, enum_type)
+
+            anima_pyramidal_bm_registration_arguments = AnimaPyramidalBMRegistrationArguments(**rigid_parameters)
+        else:
+            anima_pyramidal_bm_registration_arguments = AnimaPyramidalBMRegistrationArguments()
+
+        if "AnimaDenseSVFBMRegistrationArguments" in parsed_parameters:
+            non_rigid_parameters = parsed_parameters["AnimaDenseSVFBMRegistrationArguments"]
+
+            # Deal with the enums.
+            non_rigid_enum_keys = {
+                "aggregator_type": AggregatorTypeNonRigid,
+                "symmetry_type": SymmetryType,
+                "optimizer": OptimizerType,
+                "similarity_metric": SimilarityMetric,
+                "direction_of_directional_affine": CartesianAxis,
+                "transformation_type_between_blocks": TransformationType,
+            }
+
+            for non_rigid_enum_key in non_rigid_enum_keys:
+                if non_rigid_enum_key in non_rigid_parameters:
+                    raw_value = non_rigid_parameters[non_rigid_enum_key]
+                    enum_type = non_rigid_enum_keys[non_rigid_enum_key]
+
+                    non_rigid_parameters[non_rigid_enum_key] = _parse_enum(raw_value, enum_type)
+
+            anima_dense_svf_bm_registration_arguments = AnimaDenseSVFBMRegistrationArguments(**non_rigid_parameters)
+        else:
+            anima_dense_svf_bm_registration_arguments = AnimaDenseSVFBMRegistrationArguments()
 
         toml_file.close()
+
+        return anima_pyramidal_bm_registration_arguments, anima_dense_svf_bm_registration_arguments
