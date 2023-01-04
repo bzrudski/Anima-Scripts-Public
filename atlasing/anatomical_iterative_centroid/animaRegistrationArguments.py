@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import IntEnum
-from typing import Tuple, Any, Type
+from typing import Tuple, Any, Type, Optional
 
 import tomli
 
@@ -221,9 +221,11 @@ def _parse_enum(value: str | int, enum_type: Type[IntEnum]) -> IntEnum:
             return enum_type[cleaned_value]
 
 
-def parse_registration_parameters(filename: str) -> Tuple[
-    AnimaPyramidalBMRegistrationArguments, AnimaDenseSVFBMRegistrationArguments
-]:
+def parse_registration_parameters(
+        filename: str,
+        default_rigid_parameters: Optional[AnimaPyramidalBMRegistrationArguments] = None,
+        default_non_rigid_parameters: Optional[AnimaDenseSVFBMRegistrationArguments] = None,
+) -> Tuple[AnimaPyramidalBMRegistrationArguments, AnimaDenseSVFBMRegistrationArguments]:
     """
     Parse the registration parameters.
 
@@ -302,6 +304,13 @@ def parse_registration_parameters(filename: str) -> Tuple[
         * block_size
 
     :param filename: the TOML file containing the registration parameters
+    :param default_rigid_parameters: Default rigid parameters, passed as an `AnimaPyramidalBMRegistrationArguments`
+           object. Any fields present in the TOML file will overwrite fields present in the default. If the TOML file
+           does not contain any parameters for the rigid registration, this exact same object is returned.
+    :param default_non_rigid_parameters: Default non-rigid parameters, passed as an
+           `AnimaDenseSVFBMRegistrationArguments` object. Any fields present in the TOML file will overwrite fields
+           present in the default. If the TOML file does not contain any parameters for the non-rigid registration,
+           this exact same object is returned.
     :return: a tuple containing the `AnimaPyramidalBMRegistrationArguments` and `AnimaDenseSVFBMRegistrationArguments`
     """
 
@@ -334,9 +343,15 @@ def parse_registration_parameters(filename: str) -> Tuple[
 
                     rigid_parameters[rigid_enum_key] = _parse_enum(raw_value, enum_type)
 
-            anima_pyramidal_bm_registration_arguments = AnimaPyramidalBMRegistrationArguments(**rigid_parameters)
+            if default_rigid_parameters is not None:
+                anima_pyramidal_bm_registration_arguments = replace(default_rigid_parameters, **rigid_parameters)
+            else:
+                anima_pyramidal_bm_registration_arguments = AnimaPyramidalBMRegistrationArguments(**rigid_parameters)
         else:
-            anima_pyramidal_bm_registration_arguments = AnimaPyramidalBMRegistrationArguments()
+            if default_rigid_parameters is not None:
+                anima_pyramidal_bm_registration_arguments = default_rigid_parameters
+            else:
+                anima_pyramidal_bm_registration_arguments = AnimaPyramidalBMRegistrationArguments()
 
         if "AnimaDenseSVFBMRegistrationArguments" in parsed_parameters:
             non_rigid_parameters = parsed_parameters["AnimaDenseSVFBMRegistrationArguments"]
@@ -358,9 +373,16 @@ def parse_registration_parameters(filename: str) -> Tuple[
 
                     non_rigid_parameters[non_rigid_enum_key] = _parse_enum(raw_value, enum_type)
 
-            anima_dense_svf_bm_registration_arguments = AnimaDenseSVFBMRegistrationArguments(**non_rigid_parameters)
+            if default_non_rigid_parameters is not None:
+                anima_dense_svf_bm_registration_arguments = replace(default_non_rigid_parameters,
+                                                                    **non_rigid_parameters)
+            else:
+                anima_dense_svf_bm_registration_arguments = AnimaDenseSVFBMRegistrationArguments(**non_rigid_parameters)
         else:
-            anima_dense_svf_bm_registration_arguments = AnimaDenseSVFBMRegistrationArguments()
+            if default_non_rigid_parameters is not None:
+                anima_dense_svf_bm_registration_arguments = default_non_rigid_parameters
+            else:
+                anima_dense_svf_bm_registration_arguments = AnimaDenseSVFBMRegistrationArguments()
 
         toml_file.close()
 

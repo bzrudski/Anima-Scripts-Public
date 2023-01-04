@@ -38,6 +38,7 @@ parser.add_argument('-b', '--bch-order', type=int, default=2,
                     help='BCH order when composing transformations (default: 2)')
 parser.add_argument('-s', '--start', type=int, default=1, help='number of images in the starting atlas (default: 1)')
 parser.add_argument('--rigid', action='store_true', help="Unbiased atlas up to a rigid transformation")
+parser.add_argument('-t', '--reg-toml', type=str, help="TOML file containing the registration parameters")
 
 args = parser.parse_args()
 
@@ -113,6 +114,9 @@ for k in range(args.start + 1, args.num_images + 1):
         "-b", str(args.bch_order),
         "-c", str(args.num_cores),
     ]
+
+    if args.reg_toml is not None:
+        registration_command.extend(["-t", args.reg_toml])
 
     if args.rigid:
         registration_command.append("--rigid")

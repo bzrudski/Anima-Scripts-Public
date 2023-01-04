@@ -6,11 +6,14 @@ import os
 import sys
 from subprocess import run
 import shutil
+from typing import Optional
 
 if sys.version_info[0] > 2:
     import configparser as ConfParser
 else:
     import ConfigParser as ConfParser
+
+import animaRegistrationArguments as regArgs
 
 configFilePath = os.path.join(os.path.expanduser("~"), ".anima", "config.txt")
 if not os.path.exists(configFilePath):
@@ -34,6 +37,7 @@ parser.add_argument('-b', '--bch-order', type=int, default=2,
 parser.add_argument('-i', '--num-iter', type=int, required=True, help='Iteration number of atlas creation')
 parser.add_argument('-c', '--num-cores', type=int, default=40, help='Number of cores to run on')
 parser.add_argument('--rigid', action='store_true', help="Unbiased atlas up to a rigid transformation")
+parser.add_argument('-t', '--reg-toml', type=str, help="TOML file containing the registration parameters")
 
 args = parser.parse_args()
 
@@ -61,6 +65,35 @@ animaDenseTransformArithmetic = os.path.join(animaDir, "animaDenseTransformArith
 animaImageArithmetic = os.path.join(animaDir, "animaImageArithmetic")
 animaCreateImage = os.path.join(animaDir, "animaCreateImage")
 
+registration_parameter_file: Optional[str] = args.reg_toml
+
+default_rigid_registration_parameters = regArgs.AnimaPyramidalBMRegistrationArguments(
+    number_of_pyramid_levels=3,
+    last_pyramid_level=0,
+    initialisation_type=regArgs.InitialisationType.GRAVITY_PCA_CLOSEST_TRANSFORM,
+    symmetry_type=regArgs.SymmetryType.KISSING
+)
+
+default_non_rigid_registration_parameters = regArgs.AnimaDenseSVFBMRegistrationArguments(
+    bobyqa_translate_upper_bound=2,
+    elastic_regularisation_sigma=3,
+    extrapolation_sigma=2,
+    symmetry_type=regArgs.SymmetryType.KISSING,
+    similarity_metric=regArgs.SimilarityMetric.CORRELATION_COEFFICIENT
+)
+
+if registration_parameter_file is not None:
+    rigid_parameters, non_rigid_parameters = regArgs.parse_registration_parameters(
+        registration_parameter_file,
+        default_rigid_parameters=default_rigid_registration_parameters,
+        default_non_rigid_parameters=default_non_rigid_registration_parameters
+    )
+else:
+    rigid_parameters = default_rigid_registration_parameters
+    non_rigid_parameters = default_non_rigid_registration_parameters
+
+print(f"Registration Parameters:\n\tRigid:{rigid_parameters}\n\tNon Rigid:{non_rigid_parameters}\n")
+
 # Rigid / affine registration
 command = [
     animaPyramidalBMRegistration,
@@ -70,12 +103,15 @@ command = [
     "-O", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_tr.txt"),
     "--out-rigid", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_nr_tr.txt"),
     "--ot", "2",
-    "-p", "3",
-    "-l", "0",
-    "-I", "2",
+    # "-p", "3",
+    # "-l", "0",
+    # "-I", "2",
     "-T", str(args.num_cores),
-    "--sym-reg", "2"
+    # "--sym-reg", "2"
 ]
+
+command.extend(rigid_parameters.get_command_args())
+
 run(command)
 
 # Non-Rigid registration
@@ -87,13 +123,16 @@ command = [
     "-m", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff.nrrd"),
     "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal.nrrd"),
     "-O", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"),
-    "--tub", "2",
-    "--es", "3",
-    "--fs", "2",
+    # "--tub", "2",
+    # "--es", "3",
+    # "--fs", "2",
     "-T", str(args.num_cores),
-    "--sym-reg", "2",
-    "--metric", "1"
+    # "--sym-reg", "2",
+    # "--metric", "1"
 ]
+
+command.extend(non_rigid_parameters.get_command_args())
+
 run(command)
 
 if args.rigid:
