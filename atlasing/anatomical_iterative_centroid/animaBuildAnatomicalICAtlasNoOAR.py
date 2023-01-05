@@ -121,7 +121,8 @@ for k in range(args.start + 1, args.num_images + 1):
     if args.rigid:
         registration_command.append("--rigid")
 
-    registration_process = subprocess.run(registration_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    registration_process = subprocess.run(registration_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                          text=True)
 
     if registration_process.returncode != 0:
         print("********** STDOUT **********")

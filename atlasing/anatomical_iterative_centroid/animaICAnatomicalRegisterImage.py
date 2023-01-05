@@ -3,8 +3,9 @@
 
 import argparse
 import os
+import subprocess
 import sys
-from subprocess import run
+# from subprocess import run
 import shutil
 from typing import Optional
 
@@ -112,7 +113,15 @@ command = [
 
 command.extend(rigid_parameters.get_command_args())
 
-run(command)
+rigid_output = subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
+print("Ran the rigid registration. Obtained result:")
+print("*"*10 + " STDOUT " + "*"*10)
+print(rigid_output.stdout)
+
+print("*"*10 + " STDERR " + "*"*10)
+print(rigid_output.stderr)
+print("*" * 28)
 
 # Non-Rigid registration
 
@@ -133,7 +142,15 @@ command = [
 
 command.extend(non_rigid_parameters.get_command_args())
 
-run(command)
+non_rigid_output = subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
+print("Ran the non-rigid registration. Obtained result:")
+print("*"*10 + " STDOUT " + "*"*10)
+print(non_rigid_output.stdout)
+
+print("*"*10 + " STDERR " + "*"*10)
+print(non_rigid_output.stderr)
+print("*" * 28)
 
 if args.rigid:
 
@@ -160,7 +177,7 @@ if args.rigid:
         "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"),
         "-g", args.ref_image
     ]
-    run(command)
+    subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
     command = [
         animaDenseTransformArithmetic,
@@ -169,7 +186,7 @@ if args.rigid:
         "-b", str(args.bch_order),
         "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd")
     ]
-    run(command)
+    subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 else:
     shutil.move(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_tr.txt"),
                 os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"))
@@ -195,9 +212,9 @@ if os.path.exists(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearad
 wk = -1.0 / k
 command = [animaImageArithmetic, "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"),
            "-M", str(wk), "-o", os.path.join(temp_dir, "Tk.nrrd")]
-run(command)
+subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
 wkk = (k - 1.0) / k
 command = [animaImageArithmetic, "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"),
            "-M", str(wkk), "-o", os.path.join(temp_dir, "thetak_" + str(k) + ".nrrd")]
-run(command)
+subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
