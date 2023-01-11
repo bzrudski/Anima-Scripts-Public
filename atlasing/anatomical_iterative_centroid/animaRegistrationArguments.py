@@ -2,7 +2,10 @@ from dataclasses import dataclass, replace
 from enum import IntEnum
 from typing import Tuple, Any, Type, Optional
 
-import tomli
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 
 class AggregatorTypeNonRigid(IntEnum):
@@ -315,7 +318,7 @@ def parse_registration_parameters(
     """
 
     with open(filename, "rb") as toml_file:
-        parsed_parameters: dict[str, dict[str, Any]] = tomli.load(toml_file)
+        parsed_parameters: dict[str, dict[str, Any]] = tomllib.load(toml_file)
 
         # Define our variables for later
         anima_pyramidal_bm_registration_arguments: AnimaPyramidalBMRegistrationArguments
