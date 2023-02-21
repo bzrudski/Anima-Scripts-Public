@@ -9,7 +9,7 @@ import sys
 import shutil
 from typing import Optional
 
-if sys.version_info[0] > 2:
+if sys.version_info.major > 2:
     import configparser as ConfParser
 else:
     import ConfigParser as ConfParser
@@ -31,8 +31,8 @@ parser = argparse.ArgumentParser(
     description="Runs the registration of an image onto a current reference (to be used from build anatomical atlas).")
 parser.add_argument('-d', '--ref-dir', type=str, required=True, help='Reference (working) folder')
 parser.add_argument('-r', '--ref-image', type=str, required=True, help='Reference image')
-parser.add_argument('-B', '--prefix-base', type=str, required=True, help='Prefix base')
-parser.add_argument('-p', '--prefix', type=str, required=True, help='Prefix')
+parser.add_argument('-B', '--prefix-base', type=str, required=True, help='Prefix base (directory with the images)')
+parser.add_argument('-p', '--prefix', type=str, required=True, help='Prefix (of the images)')
 parser.add_argument('-b', '--bch-order', type=int, default=2,
                     help='BCH order when composing transformations in rigid unbiased (default: 2)')
 parser.add_argument('-i', '--num-iter', type=int, required=True, help='Iteration number of atlas creation')
@@ -72,7 +72,8 @@ default_rigid_registration_parameters = regArgs.AnimaPyramidalBMRegistrationArgu
     number_of_pyramid_levels=3,
     last_pyramid_level=0,
     initialisation_type=regArgs.InitialisationType.GRAVITY_PCA_CLOSEST_TRANSFORM,
-    symmetry_type=regArgs.SymmetryType.KISSING
+    symmetry_type=regArgs.SymmetryType.KISSING,
+    output_transformation_type=regArgs.RigidOutputTransformationType.AFFINE,
 )
 
 default_non_rigid_registration_parameters = regArgs.AnimaDenseSVFBMRegistrationArguments(
@@ -96,14 +97,20 @@ else:
 print(f"Registration Parameters:\n\tRigid:{rigid_parameters}\n\tNon Rigid:{non_rigid_parameters}\n")
 
 # Rigid / affine registration
+atlas_image = args.ref_image
+original_instance_image = os.path.join(args.prefix_base, f"{args.prefix}_{k}.nii.gz")
+rigid_registration_output = os.path.join(temp_dir, f"{args.prefix}_{k}_aff.nrrd")
+affine_transformation_path = os.path.join(temp_dir, f"{args.prefix}_{k}_aff_tr.txt")
+rigid_transformation_file = os.path.join(temp_dir, f"{args.prefix}_{k}_aff_nr_tr.txt")
+
 command = [
     animaPyramidalBMRegistration,
-    "-r", args.ref_image,
-    "-m", os.path.join(args.prefix_base, args.prefix + "_" + str(k) + ".nii.gz"),
-    "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff.nrrd"),
-    "-O", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_tr.txt"),
-    "--out-rigid", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_nr_tr.txt"),
-    "--ot", "2",
+    "-r", atlas_image,
+    "-m", original_instance_image,
+    "-o", rigid_registration_output,
+    "-O", affine_transformation_path,
+    "--out-rigid", rigid_transformation_file,
+    # "--ot", "2",
     # "-p", "3",
     # "-l", "0",
     # "-I", "2",
@@ -111,8 +118,10 @@ command = [
     # "--sym-reg", "2"
 ]
 
+# Add the registration arguments
 command.extend(rigid_parameters.get_command_args())
 
+# Perform the rigid registration
 rigid_output = subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
 print("Ran the rigid registration. Obtained result:")
@@ -126,12 +135,15 @@ print("*" * 28)
 # Non-Rigid registration
 
 # For basic atlases
+nonrigid_registration_output = os.path.join(temp_dir, f"{args.prefix}_{k}_bal.nrrd")
+nonrigid_transformation_file = os.path.join(temp_dir, f"{args.prefix}_{k}_bal_tr.nrrd")
+
 command = [
     animaDenseSVFBMRegistration,
-    "-r", args.ref_image,
-    "-m", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff.nrrd"),
-    "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal.nrrd"),
-    "-O", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"),
+    "-r", atlas_image,
+    "-m", rigid_registration_output,
+    "-o", nonrigid_registration_output,
+    "-O", nonrigid_transformation_file,
     # "--tub", "2",
     # "--es", "3",
     # "--fs", "2",
@@ -153,7 +165,7 @@ print(non_rigid_output.stderr)
 print("*" * 28)
 
 if args.rigid:
-
+    raise Exception("TODO: Not properly implemented yet!")
     # command = [
     #     animaLinearTransformArithmetic, "-i", os.path.join(
     #         # temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
@@ -166,55 +178,64 @@ if args.rigid:
     # ]
     # run(command)
 
-    shutil.move(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_nr_tr.txt"),
-                os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"))
+    shutil.move(os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_aff_nr_tr.txt"),
+                os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"))
 
     command = [
         animaLinearTransformToSVF,
-        "-i", os.path.join(
+        "-i", os.path.rigid_registration_output(
             temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
         ),
-        "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"),
+        "-o", os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"),
         "-g", args.ref_image
     ]
     subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
     command = [
         animaDenseTransformArithmetic,
-        "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"),
-        "-c", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"),
+        "-i", os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"),
+        "-c", os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"),
         "-b", str(args.bch_order),
-        "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd")
+        "-o", os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd")
     ]
     subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 else:
-    shutil.move(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_tr.txt"),
-                os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"))
+    shutil.move(affine_transformation_path,
+                os.path.join(temp_dir, f"{args.prefix}_{k}_linear_tr.txt"))
 
-    shutil.move(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"),
-                os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"))
+    shutil.move(nonrigid_transformation_file,
+                os.path.join(temp_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd"))
 
-if os.path.exists(os.path.join(residual_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd")):
-    os.remove(os.path.join(residual_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"))
+if os.path.exists(os.path.join(residual_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd")):
+    os.remove(os.path.join(residual_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd"))
 
-os.symlink(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"),
-           os.path.join(residual_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"))
+os.symlink(os.path.join(temp_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd"),
+           os.path.join(residual_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd"))
 
-if os.path.exists(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd")):
-    open(os.path.join(residual_dir, args.prefix + "_" + str(k) + "_flag"), 'a').close()
+if os.path.exists(os.path.join(temp_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd")):
+    open(os.path.join(residual_dir, f"{args.prefix}_{k}_flag"), 'a').close()
 
-if os.path.exists(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd")):
-    os.remove(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"))
+if os.path.exists(nonrigid_transformation_file):
+    os.remove(nonrigid_transformation_file)
 
-if os.path.exists(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd")):
-    os.remove(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"))
+if os.path.exists(os.path.join(temp_dir, f"{args.prefix}_{k}_linearaddon_tr.nrrd")):
+    os.remove(os.path.join(temp_dir, f"{args.prefix}_{k}_linearaddon_tr.nrrd"))
 
 wk = -1.0 / k
-command = [animaImageArithmetic, "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"),
-           "-M", str(wk), "-o", os.path.join(temp_dir, "Tk.nrrd")]
+command = [
+    animaImageArithmetic,
+    "-i", os.path.join(temp_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd"),
+    "-M", str(wk),
+    "-o", os.path.join(temp_dir, "Tk.nrrd")
+]
+
 subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
 wkk = (k - 1.0) / k
-command = [animaImageArithmetic, "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd"),
-           "-M", str(wkk), "-o", os.path.join(temp_dir, "thetak_" + str(k) + ".nrrd")]
+command = [
+    animaImageArithmetic,
+    "-i", os.path.join(temp_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd"),
+    "-M", str(wkk),
+    "-o", os.path.join(temp_dir, f"thetak_{k}.nrrd")
+]
 subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)

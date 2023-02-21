@@ -55,6 +55,13 @@ class InitialisationType(IntEnum):
     GRAVITY_PCA_CLOSEST_TRANSFORM = 2
 
 
+class RigidOutputTransformationType(IntEnum):
+    RIGID = 0
+    TRANSLATION = 1
+    AFFINE = 2
+    ANISOTROPIC_SIM = 3
+
+
 @dataclass
 class AnimaDenseSVFBMRegistrationArguments:
     """
@@ -162,6 +169,7 @@ class AnimaPyramidalBMRegistrationArguments:
     block_minimum_standard_deviation: float = 5
     block_spacing: int = 5
     block_size: int = 5
+    output_transformation_type: RigidOutputTransformationType = RigidOutputTransformationType.RIGID
 
     def get_command_args(self) -> list[str]:
         """
@@ -194,6 +202,7 @@ class AnimaPyramidalBMRegistrationArguments:
             '-s', f"{self.block_minimum_standard_deviation}",
             '--sp', f"{self.block_spacing}",
             '--bs', f"{self.block_size}",
+            '--ot', f"{self.output_transformation_type.value}",
         ]
 
 
@@ -276,6 +285,7 @@ def parse_registration_parameters(
         * block_minimum_standard_deviation
         * block_spacing
         * block_size
+        * output_transformation_type
 
     * AnimaDenseSVFBMRegistrationArguments:
 
@@ -337,6 +347,7 @@ def parse_registration_parameters(
                 "similarity_metric": SimilarityMetric,
                 "direction_of_directional_affine": CartesianAxis,
                 "transformation_type_between_blocks": TransformationType,
+                "output_transformation_type": RigidOutputTransformationType,
             }
 
             for rigid_enum_key in rigid_enum_keys:
