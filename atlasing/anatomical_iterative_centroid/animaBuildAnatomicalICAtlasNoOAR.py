@@ -72,13 +72,11 @@ os.makedirs(residual_dir)
 
 
 if args.start == 1 or args.start == 0:
-    shutil.copyfile(os.path.join(prefixBase, prefix + "_1.nii.gz"), "averageForm1.nii.gz")
+    shutil.copyfile(os.path.join(prefixBase, f"{prefix}_1.nii.gz"), "averageForm1.nii.gz")
     args.start = 1 
 
 previousMergeId = 0
 
-print("*"*10+"\n\n")
-print("Finished regstrations... beginning BCH")
 
 for k in range(args.start + 1, args.num_images + 1):
     print(f"Starting with image {k}...")
@@ -115,6 +113,7 @@ for k in range(args.start + 1, args.num_images + 1):
         "-c", str(args.num_cores),
     ]
 
+    # Pass in the registration arguments file
     if args.reg_toml is not None:
         registration_command.extend(["-t", args.reg_toml])
 
