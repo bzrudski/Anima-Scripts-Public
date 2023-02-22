@@ -39,6 +39,9 @@ parser.add_argument('-b', '--bch-order', type=int, default=2,
 parser.add_argument('-s', '--start', type=int, default=1, help='number of images in the starting atlas (default: 1)')
 parser.add_argument('--rigid', action='store_true', help="Unbiased atlas up to a rigid transformation")
 parser.add_argument('-t', '--reg-toml', type=str, help="TOML file containing the registration parameters")
+parser.add_argument('-x', '--auxiliary-image-path', type=str,
+                    help="Path to auxiliary images, if these are to be transformed as well. Must have same prefix as "
+                         "images.")
 
 args = parser.parse_args()
 
@@ -48,6 +51,8 @@ print("Beginning atlas construction...")
 
 prefixBase = os.path.dirname(args.data_prefix)
 prefix = os.path.basename(args.data_prefix)
+
+auxiliary_image_output_prefix = "auxImage"
 
 temp_dir = os.path.join(prefixBase, "tempDir")
 residual_dir = os.path.join(prefixBase, "residualDir")
@@ -152,6 +157,9 @@ for k in range(args.start + 1, args.num_images + 1):
             "-a", str(i),
         ]
 
+        if args.auxiliary_image_path is not None:
+            bch_command += ["-x", args.auxiliary_image_path]
+
         bch_process = subprocess.run(bch_command, stdout=subprocess.PIPE, text=True)
 
         if bch_process.returncode != 0:
@@ -172,6 +180,9 @@ for k in range(args.start + 1, args.num_images + 1):
         "-c", str(args.num_cores),
     ]
 
+    if args.auxiliary_image_path is not None:
+        merge_command += ["-x", args.auxiliary_image_path]
+
     merge_process = subprocess.run(merge_command, stdout=subprocess.PIPE, text=True)
 
     if merge_process.returncode != 0:
@@ -181,5 +192,15 @@ for k in range(args.start + 1, args.num_images + 1):
     print(f"Merge completed for image {k}")
 
     print(f"************* Finished adding image {k} to atlas {ref}\n")
+
+if args.auxiliary_image_path is not None:
+    # Copy final auxiliary images, if available, to the parent directory:
+    aux_file_list = sorted(glob.glob(os.path.join(temp_dir, "AUX_*.nii.gz")))
+
+    for i, transformed_aux_image in enumerate(aux_file_list):
+        j = i + 1
+        shutil.copy2(transformed_aux_image, os.path.join(prefixBase, f"{auxiliary_image_output_prefix}{j}.nii.gz"))
+
+    print("Copied the final transformed auxiliary images to the parent directory.")
 
 print("Finished atlas construction! Exiting now...")

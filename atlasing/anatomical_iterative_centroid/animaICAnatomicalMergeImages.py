@@ -79,7 +79,7 @@ if args.auxiliary_image_path is not None:
     command = [
         animaAverageImages,
         "-i", auxiliary_image_list_file,
-        "-o", f"auxAverageForm{args.num_iter}.nii.gz"
+        "-o", f"auxImageAverageForm{args.num_iter}.nii.gz"
     ]
 
     if os.path.exists(os.path.join("Masks", "Mask_1.nii.gz")):
