@@ -16,7 +16,7 @@ else:
 configFilePath = os.path.join(os.path.expanduser("~"), ".anima",  "config.txt")
 if not os.path.exists(configFilePath):
     print('Please create a configuration file for Anima python scripts. Refer to the README')
-    quit()
+    quit(code=1)
 
 configParser = ConfParser.RawConfigParser()
 configParser.read(configFilePath)

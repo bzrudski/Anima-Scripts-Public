@@ -19,7 +19,7 @@ import animaRegistrationArguments as regArgs
 configFilePath = os.path.join(os.path.expanduser("~"), ".anima", "config.txt")
 if not os.path.exists(configFilePath):
     print('Please create a configuration file for Anima python scripts. Refer to the README')
-    quit()
+    quit(code=1)
 
 configParser = ConfParser.RawConfigParser()
 configParser.read(configFilePath)
@@ -132,6 +132,10 @@ print("*"*10 + " STDERR " + "*"*10)
 print(rigid_output.stderr)
 print("*" * 28)
 
+if rigid_output.returncode != 0:
+    raise RuntimeError(f"Error performing rigid registration. Process exited with return code "
+                       f"{rigid_output.returncode}.")
+
 # Non-Rigid registration
 
 # For basic atlases
@@ -164,62 +168,78 @@ print("*"*10 + " STDERR " + "*"*10)
 print(non_rigid_output.stderr)
 print("*" * 28)
 
+if non_rigid_output.returncode != 0:
+    raise RuntimeError(f"Error performing nonrigid registration. Process exited with return code "
+                       f"{non_rigid_output.returncode}.")
+
 if args.rigid:
-    raise Exception("TODO: Not properly implemented yet!")
-    # command = [
-    #     animaLinearTransformArithmetic, "-i", os.path.join(
-    #         # temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
-    #         temp_dir, args.prefix + "_" + str(k) + "_aff_nr_tr.txt"
-    #     ),
-    #     "-M", "-1",
-    #     "-o", os.path.join(
-    #         temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
-    #     )
-    # ]
-    # run(command)
+    # TODO: Fix the procedure with the --rigid option
+    raise NotImplementedError("Registration up to a rigid transformation is not yet fully implemented.")
 
-    shutil.move(os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_aff_nr_tr.txt"),
-                os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"))
-
-    command = [
-        animaLinearTransformToSVF,
-        "-i", os.path.rigid_registration_output(
-            temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
-        ),
-        "-o", os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"),
-        "-g", args.ref_image
-    ]
-    subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-
-    command = [
-        animaDenseTransformArithmetic,
-        "-i", os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"),
-        "-c", os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"),
-        "-b", str(args.bch_order),
-        "-o", os.path.rigid_registration_output(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd")
-    ]
-    subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+#     # command = [
+#     #     animaLinearTransformArithmetic, "-i", os.path.join(
+#     #         # temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
+#     #         temp_dir, args.prefix + "_" + str(k) + "_aff_nr_tr.txt"
+#     #     ),
+#     #     "-M", "-1",
+#     #     "-o", os.path.join(
+#     #         temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
+#     #     )
+#     # ]
+#     # run(command)
+#
+#     shutil.move(os.path.join(temp_dir, args.prefix + "_" + str(k) + "_aff_nr_tr.txt"),
+#                 os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"))
+#
+#     command = [
+#         animaLinearTransformToSVF,
+#         "-i", os.path.join(
+#             temp_dir, args.prefix + "_" + str(k) + "_linear_tr.txt"
+#         ),
+#         "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"),
+#         "-g", args.ref_image
+#     ]
+#     subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+#
+#     command = [
+#         animaDenseTransformArithmetic,
+#         "-i", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_linearaddon_tr.nrrd"),
+#         "-c", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_bal_tr.nrrd"),
+#         "-b", str(args.bch_order),
+#         "-o", os.path.join(temp_dir, args.prefix + "_" + str(k) + "_nonlinear_tr.nrrd")
+#     ]
+#     subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 else:
+    # The atlas constructed using this approach is unbiased up to an affine transformation (see paper by Legouhy et
+    # al., 2022).
+
+    # Rename the affine transformation to label it as the linear transformation
     shutil.move(affine_transformation_path,
                 os.path.join(temp_dir, f"{args.prefix}_{k}_linear_tr.txt"))
 
+    # Rename the nonrigid transformation file to label it as the nonlinear transformation
     shutil.move(nonrigid_transformation_file,
                 os.path.join(temp_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd"))
 
+# Delete any residual nonlinear transformations for this iteration
 if os.path.exists(os.path.join(residual_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd")):
     os.remove(os.path.join(residual_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd"))
 
+# Create a symbolic link to the nonlinear transform in the residual directory
 os.symlink(os.path.join(temp_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd"),
            os.path.join(residual_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd"))
 
 if os.path.exists(os.path.join(temp_dir, f"{args.prefix}_{k}_nonlinear_tr.nrrd")):
     open(os.path.join(residual_dir, f"{args.prefix}_{k}_flag"), 'a').close()
 
+# Remove the original non-rigid registration file (it has since been renamed, so it shouldn't exist)
 if os.path.exists(nonrigid_transformation_file):
     os.remove(nonrigid_transformation_file)
 
 if os.path.exists(os.path.join(temp_dir, f"{args.prefix}_{k}_linearaddon_tr.nrrd")):
     os.remove(os.path.join(temp_dir, f"{args.prefix}_{k}_linearaddon_tr.nrrd"))
+
+# Compute weighting for the transformations
 
 wk = -1.0 / k
 command = [
@@ -229,7 +249,11 @@ command = [
     "-o", os.path.join(temp_dir, "Tk.nrrd")
 ]
 
-subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+weighting_output_1 = subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
+if weighting_output_1.returncode != 0:
+    raise RuntimeError(f"Error computing the first weighted transformation. Process exited with error code "
+                       f"{weighting_output_1.returncode}.")
 
 wkk = (k - 1.0) / k
 command = [
@@ -238,4 +262,8 @@ command = [
     "-M", str(wkk),
     "-o", os.path.join(temp_dir, f"thetak_{k}.nrrd")
 ]
-subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+weighting_output_2 = subprocess.run(command, text=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
+if weighting_output_2.returncode != 0:
+    raise RuntimeError(f"Error computing the first weighted transformation. Process exited with error code "
+                       f"{weighting_output_2.returncode}.")
