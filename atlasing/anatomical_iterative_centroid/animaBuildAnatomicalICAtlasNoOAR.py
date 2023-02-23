@@ -51,6 +51,7 @@ print("Beginning atlas construction...")
 
 prefixBase = os.path.dirname(args.data_prefix)
 prefix = os.path.basename(args.data_prefix)
+auxiliary_image_path = args.auxiliary_image_path
 
 auxiliary_image_output_prefix = "auxImage"
 
@@ -78,7 +79,10 @@ os.makedirs(residual_dir)
 
 if args.start == 1 or args.start == 0:
     shutil.copyfile(os.path.join(prefixBase, f"{prefix}_1.nii.gz"), "averageForm1.nii.gz")
-    args.start = 1 
+    args.start = 1
+
+    if auxiliary_image_path is not None:
+        shutil.copyfile(os.path.join(auxiliary_image_path, f"{prefix}_1.nii.gz"), "auxImageAverageForm1.nii.gz")
 
 previousMergeId = 0
 
